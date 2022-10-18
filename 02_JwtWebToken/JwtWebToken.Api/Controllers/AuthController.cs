@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public ActionResult<User> Register(UserDto request)
+    public async Task<ActionResult<User>> Register(UserDto request)
     {
         CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -32,7 +32,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public ActionResult<string> Login(UserDto request)
+    public async Task<ActionResult<string>> Login(UserDto request)
     {
         if (user.UserName != request.UserName)
         {
