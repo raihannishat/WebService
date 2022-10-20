@@ -22,7 +22,7 @@ public class AuthController : ControllerBase
         _userService = userService;
     }
 
-    [HttpGet("getme"), Authorize]
+    [HttpGet("get-me"), Authorize]
     public ActionResult<string> GetMe()
     {
         var userName = _userService.GetMyName();
@@ -57,7 +57,58 @@ public class AuthController : ControllerBase
 
         var token = CreateToken(user);
 
+        var refreshToken = GetRefreshToken();
+        SetRefreshToken(refreshToken);
+
         return Ok(token);
+    }
+
+    [HttpPost("refresh-token")]
+    public async Task<ActionResult<string>> RefreshToken()
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+
+        if (!user.RefreshToken.Equals(refreshToken))
+        {
+            return Unauthorized("Incalid refresh token.");
+        }
+        else if (user.TokenExpires < DateTime.Now)
+        {
+            return Unauthorized("Token expired.");
+        }
+
+        var token = CreateToken(user);
+        var newRefreshToken = GetRefreshToken();
+        SetRefreshToken(newRefreshToken);
+
+        return Ok(token);
+    }
+
+    private RefreshToken GetRefreshToken()
+    {
+        var refreshToken = new RefreshToken
+        {
+            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            Expires = DateTime.Now.AddDays(7),
+            Created = DateTime.Now
+        };
+
+        return refreshToken;
+    }
+
+    private void SetRefreshToken(RefreshToken refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = refreshToken.Expires,
+        };
+
+        Response.Cookies.Append("refreshToken", refreshToken.Token, cookieOptions);
+
+        user.RefreshToken = refreshToken.Token;
+        user.TokenCreated = refreshToken.Created;
+        user.TokenExpires = refreshToken.Expires;
     }
 
     private string CreateToken(User user)
